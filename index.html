@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ID Card Generator</title>
+    <style>
+        /* Existing styles unchanged */
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        h2 {
+            text-align: center;
+            padding: 20px 0;
+            background-color: #4CAF50;
+            color: white;
+            margin: 0;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .form-container {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            margin-right: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        input, textarea {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        textarea {
+            resize: none;
+        }
+        button {
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .canvas-container {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        canvas {
+            border: 1px solid #ddd;
+            margin-bottom: 15px;
+        }
+        #downloadBtn {
+            display: none;
+            padding: 12px 24px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #downloadBtn:hover {
+            background-color: #1976D2;
+        }
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .form-container, .canvas-container {
+                margin-right: 0;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<h2>ID Card Generator</h2>
+<label style="display:block; text-align:center; margin-top:10px;">
+  <a href="index1.html">Individual I Card</a>
+</label>
+
+<div class="container">
+    <div class="form-container">
+        <input type="file" id="zipInput" accept=".zip" required>
+        <button onclick="processZip()">Generate Bulk ID Cards</button>
+
+        
+        <!--<form id="idCardForm">-->
+        <!--    <label>Upload Excel File:</label>-->
+        <!--    <input type="file" id="excelInput" accept=".xlsx, .xls"><br><br>-->
+        <!--    <label>Password:</label>-->
+        <!--    <input type="password" id="password" placeholder="Enter Password" required>-->
+        <!--    <button type="button" onclick="generateBulkIDCards()">Generate Bulk ID Cards</button>-->
+        <!--</form>-->
+    </div>
+    <div class="canvas-container">
+        <canvas id="idCardCanvas" width="800" height="1200"></canvas>
+        <button id="downloadBtn">Download Current ID Card</button>
+    </div>
+</div>
+
+<!--<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+//     function formatDOB(dobString) {
+//     const date = new Date(dobString);
+//     const day = date.getDate().toString().padStart(2, '0');
+//     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+//                         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+//     const month = monthNames[date.getMonth()];
+//     const year = date.getFullYear();
+//     return `${day}-${month}-${year}`;
+// }
+function formatDOB(dobInput) {
+    let date;
+
+    if (typeof dobInput === "number") {
+        // Convert Excel serial date to JavaScript Date
+        date = new Date(Date.UTC(1899, 11, 30) + dobInput * 86400000);
+    } else {
+        // Standard string date
+        date = new Date(dobInput);
+    }
+
+    const day = date.getUTCDate().toString().padStart(2, '0');
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const month = monthNames[date.getUTCMonth()];
+    const year = date.getUTCFullYear();
+
+    return `${day}-${month}-${year}`;
+}
+
+
+//   async function processZip() {
+//     try {
+//         const input = document.getElementById("zipInput");
+//         if (!input.files[0]) return alert("Please upload a ZIP file.");
+
+//         const zip = new JSZip();
+//         const contents = await zip.loadAsync(input.files[0]);
+        
+//         // Find Excel file
+//         const excelFile = Object.keys(contents.files).find(name => name.endsWith('.xlsx'));
+//         if (!excelFile) return alert("No Excel file found in ZIP!");
+
+//         const data = await contents.files[excelFile].async("arraybuffer");
+//         const workbook = XLSX.read(data, { type: "array" });
+//         const sheet = workbook.Sheets[workbook.SheetNames[0]];
+//         const students = XLSX.utils.sheet_to_json(sheet);
+//         console.log(students);
+
+//         for (let student of students) {
+//             const photoName = student["Photo Filename"];
+//             const photoFile = contents.file(photoName);
+//             if (!photoFile) {
+//                 console.warn(`Photo "${photoName}" not found in ZIP.`);
+//                 continue;
+//             }
+
+//             const photoData = await photoFile.async("base64");
+//             const photoURL = "data:image/jpeg;base64," + photoData;
+
+//             await generateIDCard(student, photoURL);
+//         }
+//     } catch (error) {
+//         console.error("Error processing ZIP file:", error);
+//     }
+// }
+
+async function processZip() {
+    try {
+        const input = document.getElementById("zipInput");
+        if (!input.files[0]) return alert("Please upload a ZIP file.");
+
+        const zip = new JSZip();
+        const contents = await zip.loadAsync(input.files[0]);
+
+        const excelFile = Object.keys(contents.files).find(name => name.endsWith('.xlsx'));
+        if (!excelFile) return alert("No Excel file found in ZIP!");
+
+        const data = await contents.files[excelFile].async("arraybuffer");
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const students = XLSX.utils.sheet_to_json(sheet);
+
+        console.log("Total Students in Excel:", students.length);
+
+        let successCount = 0;
+        let failureCount = 0;
+        const failedStudents = [];
+        const successfulStudents = [];
+
+        for (let student of students) {
+            const photoName = student["Photo Filename"];
+            const photoFile = contents.file(photoName);
+
+            if (!photoFile) {
+                console.warn(`❌ Photo missing for: ${student["Name"]}`);
+                failureCount++;
+                failedStudents.push(student["Name"]);
+                continue;
+            }
+
+            try {
+                const photoData = await photoFile.async("base64");
+                const photoURL = "data:image/jpeg;base64," + photoData;
+                await generateIDCard(student, photoURL);
+                successCount++;
+                successfulStudents.push(student["Name"]);
+            } catch (err) {
+                console.error(`❌ Error generating card for ${student["Name"]}:`, err);
+                failureCount++;
+                failedStudents.push(student["Name"]);
+            }
+        }
+
+        console.log("✅ Successfully generated ID cards:", successCount);
+        console.log("❌ Failed to generate ID cards:", failureCount);
+
+        if (successfulStudents.length > 0) {
+            console.log("✅ Success List:", successfulStudents);
+        }
+
+        if (failedStudents.length > 0) {
+            console.log("❌ Failure List:", failedStudents);
+        }
+
+    } catch (error) {
+        console.error("🚨 Error processing ZIP file:", error);
+    }
+}
+
+
+  async function generateIDCard(data, photoURL) {
+    try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 800;
+        canvas.height = 1200;
+        const ctx = canvas.getContext("2d");
+
+        const bg = new Image();
+        bg.src = "/assets/Blank Id Card1.png"; // or a relative path
+        await new Promise((resolve, reject) => {
+            bg.onload = resolve;
+            bg.onerror = reject; // Handle loading errors
+        });
+        ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+
+        // Draw text
+        ctx.font = "bold 30px Arial";
+        ctx.fillStyle = "#1600fd";
+        ctx.fillText(data["Name"], 70, 680);
+        ctx.fillText(data["Class"], 200, 735);
+        ctx.fillText(data["Section"], 630, 735);
+        ctx.fillText(data["AdmissionNo"], 320, 790);
+        ctx.fillText(data["GuardianName"], 320, 830);
+        ctx.fillText(formatDOB(data["DOB"]), 320, 875);
+        ctx.fillText(data["Phone"], 320, 922);
+        wrapText(ctx, data["Address"], 320, 970, 400, 30);
+
+        // Draw photo
+        const img = new Image();
+        img.src = photoURL;
+        await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject; // Handle loading errors
+        });
+        ctx.drawImage(img, 462, 300, 250, 305);
+
+        // Auto-download
+        const link = document.createElement("a");
+        const fileName = data["Name"].replace(/\s+/g, "_") + "_ID_Card.png";
+        link.download = fileName;
+        link.href = canvas.toDataURL();
+        link.click();
+    } catch (error) {
+        console.error("Error generating ID Card:", error);
+    }
+}
+
+
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+        const words = text.split(' ');
+        let line = '', lineY = y;
+        for (let word of words) {
+            const testLine = line + word + ' ';
+            if (ctx.measureText(testLine).width > maxWidth) {
+                ctx.fillText(line, x, lineY);
+                line = word + ' ';
+                lineY += lineHeight;
+            } else {
+                line = testLine;
+            }
+        }
+        ctx.fillText(line, x, lineY);
+    }
+</script>
+
+
+<!--<script>-->
+<!--    const canvas = document.getElementById('idCardCanvas');-->
+<!--    const ctx = canvas.getContext('2d');-->
+<!--    const downloadBtn = document.getElementById('downloadBtn');-->
+
+<!--    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {-->
+<!--        const words = text.split(' ');-->
+<!--        let line = '';-->
+<!--        let lineY = y;-->
+
+<!--        for (let i = 0; i < words.length; i++) {-->
+<!--            const testLine = line + words[i] + ' ';-->
+<!--            const testWidth = ctx.measureText(testLine).width;-->
+<!--            if (testWidth > maxWidth && i > 0) {-->
+<!--                ctx.fillText(line, x, lineY);-->
+<!--                line = words[i] + ' ';-->
+<!--                lineY += lineHeight;-->
+<!--            } else {-->
+<!--                line = testLine;-->
+<!--            }-->
+<!--        }-->
+<!--        ctx.fillText(line, x, lineY);-->
+<!--    }-->
+
+<!--    function generateBulkIDCards() {-->
+<!--        const password = document.getElementById('password').value;-->
+<!--        if (password !== "svps") {-->
+<!--            alert("Incorrect password! Please try again.");-->
+<!--            return;-->
+<!--        }-->
+
+<!--        const fileInput = document.getElementById('excelInput');-->
+<!--        if (!fileInput.files[0]) {-->
+<!--            alert("Please upload an Excel file.");-->
+<!--            return;-->
+<!--        }-->
+
+<!--        const reader = new FileReader();-->
+<!--        reader.onload = function(e) {-->
+<!--            const data = new Uint8Array(e.target.result);-->
+<!--            const workbook = XLSX.read(data, {type: 'array'});-->
+<!--            const sheet = workbook.Sheets[workbook.SheetNames[0]];-->
+<!--            const jsonData = XLSX.utils.sheet_to_json(sheet);-->
+
+<!--            processStudents(jsonData);-->
+<!--        };-->
+<!--        reader.readAsArrayBuffer(fileInput.files[0]);-->
+<!--    }-->
+
+<!--    async function processStudents(students) {-->
+<!--        for (const student of students) {-->
+<!--            await drawIDCard(student);-->
+<!--            await new Promise(resolve => setTimeout(resolve, 1000));-->
+<!--            downloadCard(student.Name);-->
+<!--        }-->
+<!--        alert('All ID cards have been generated and downloaded.');-->
+<!--    }-->
+
+<!--    function drawIDCard(data) {-->
+<!--        return new Promise((resolve) => {-->
+<!--            const img = new Image();-->
+<!--            img.src = '/assets/Blank Id Card1.png';-->
+<!--            img.onload = () => {-->
+<!--                ctx.clearRect(0, 0, canvas.width, canvas.height);-->
+<!--                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);-->
+
+<!--                ctx.font = "bold 30px Arial";-->
+<!--                ctx.fillStyle = "#1600fd";-->
+
+<!--                ctx.fillText(data.Name || '', 70, 680);-->
+<!--                ctx.fillText(data.Class || '', 200, 735);-->
+<!--                ctx.fillText(data.Section || '', 630, 735);-->
+<!--                ctx.fillText(data.AdmissionNo || '', 320, 790);-->
+<!--                ctx.fillText(data.GuardianName || '', 320, 830);-->
+<!--                ctx.fillText(data.DOB || '', 320, 875);-->
+<!--                ctx.fillText(data.Phone || '', 320, 922);-->
+<!--                wrapText(ctx, data.Address || '', 320, 970, 400, 30);-->
+
+<!--                resolve();-->
+<!--            };-->
+<!--        });-->
+<!--    }-->
+
+<!--    function downloadCard(name) {-->
+<!--        const link = document.createElement('a');-->
+<!--        const formattedName = name.replace(/\s+/g, '_');-->
+<!--        link.download = `${formattedName}_ID_Card.png`;-->
+<!--        link.href = canvas.toDataURL();-->
+<!--        link.click();-->
+<!--    }-->
+<!--</script>-->
+
+</body>
+</html>

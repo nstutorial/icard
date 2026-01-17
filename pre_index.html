@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ID Card Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #idCardCanvas {
+            border: 1px solid #ddd;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        input, textarea {
+            margin: 10px 0;
+            padding: 8px;
+            width: 100%;
+            max-width: 300px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .form-container {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>ID Card Generator</h2>
+
+<!-- Form to collect data -->
+<div class="form-container">
+    <form id="idCardForm">
+        <label>Name: </label>
+        <input type="text" id="name"  placeholder="Enter Name" required><br>
+        
+        <label>Class: </label>
+        <input type="text" id="class" placeholder="Enter Class" required><br>
+        
+        <label>Section: </label>
+        <input type="text" id="section" placeholder="Enter Section" required><br>
+        
+        <label>Admission No: </label>
+        <input type="text" id="admnNo" placeholder="Enter Admission Number" required><br>
+        
+        <label>Guardian's Name: </label>
+        <input type="text" id="guardian" placeholder="Enter Guardian's Name" required><br>
+        
+        <label>D.O.B: </label>
+        <input type="text" id="dob" placeholder="Enter Date of Birth" required><br>
+        
+        <label>Phone No: </label>
+        <input type="text" id="phone" placeholder="Enter Phone Number" required><br>
+        
+        <label>Address: </label>
+        <textarea id="address" placeholder="Enter Address" required></textarea><br>
+        
+        <label>Upload Photo: </label>
+        <input type="file" id="photoInput" accept="image/*" required><br><br>
+        
+        <button type="button" onclick="generateIDCard()">Generate ID Card</button>
+    </form>
+</div>
+
+<!-- Canvas for ID card -->
+<canvas id="idCardCanvas" width="800" height="1200"></canvas><br>
+
+<button id="downloadBtn" style="display:none;" onclick="downloadCard()">Download ID Card</button>
+
+<script>
+    const canvas = document.getElementById('idCardCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function generateIDCard() {
+        // Load background template
+        const img = new Image();
+        img.src = '/assets/Blank Id Card.jpg';  // Path to the uploaded ID card template
+        img.onload = function() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            // Get form values
+            const name = document.getElementById('name').value;
+            const className = document.getElementById('class').value;
+            const section = document.getElementById('section').value;
+            const admnNo = document.getElementById('admnNo').value;
+            const guardian = document.getElementById('guardian').value;
+            const dob = document.getElementById('dob').value;
+            const phone = document.getElementById('phone').value;
+            const address = document.getElementById('address').value;
+
+            // Add text data to canvas
+            ctx.font = "bold 30px Arial";
+            ctx.fillStyle = "black";
+            ctx.fillText(name, 75, 680);  // Name
+            ctx.fillText(className, 200, 735);  // Class
+            ctx.fillText(section, 630, 735);  // Section
+            ctx.fillText(admnNo, 320, 790);  // Admission No
+            ctx.fillText(guardian, 320, 830);  // Guardian's Name
+            ctx.fillText(dob, 320, 875);  // Date of Birth
+            ctx.fillText(phone, 320, 920);  // Phone No
+            
+            // Call the text wrapping function for address
+            wrapText(ctx, address, 320, 970, 400, 30);  // Address with wrapping
+
+            // Add uploaded photo
+            const photoInput = document.getElementById('photoInput');
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const imgPhoto = new Image();
+                imgPhoto.src = event.target.result;
+                imgPhoto.onload = function() {
+                    ctx.drawImage(imgPhoto, 460, 300, 250, 305);  // Coordinates for photo
+                };
+            };
+            if (photoInput.files[0]) {
+                reader.readAsDataURL(photoInput.files[0]);
+            }
+
+            // Show download button
+            document.getElementById("downloadBtn").style.display = "block";
+        };
+    }
+
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+        const words = text.split(' ');
+        let line = '';
+        let lineY = y;
+
+        for (let i = 0; i < words.length; i++) {
+            const testLine = line + words[i] + ' ';
+            const metrics = ctx.measureText(testLine);
+            const testWidth = metrics.width;
+
+            if (testWidth > maxWidth && i > 0) {
+                // Draw the current line of text
+                ctx.fillText(line, x, lineY);
+                // Move to the next line
+                line = words[i] + ' ';
+                lineY += lineHeight;
+            } else {
+                line = testLine;
+            }
+        }
+        // Draw the remaining text
+        ctx.fillText(line, x, lineY);
+    }
+
+    function downloadCard() {
+    const name = document.getElementById('name').value.trim(); // Get the name from the form
+    const formattedName = name.replace(/\s+/g, '_'); // Replace spaces with underscores for the filename
+    
+    const link = document.createElement('a');
+    link.download = `${formattedName}_ID_Card.png`; // Use the name as part of the filename
+    link.href = canvas.toDataURL();
+    link.click();
+}
+
+</script>
+
+</body>
+</html>
