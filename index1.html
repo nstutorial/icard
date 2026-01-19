@@ -288,10 +288,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Paths to try for template (try relative first)
-        const possiblePaths = [
-            'assets/Blank Id Card1.png',
-            './assets/Blank Id Card1.png',
-            '/assets/Blank Id Card1.png'
+        // const possiblePaths = [
+        //     'assets/Blank Id Card1.png',
+        //     './assets/Blank Id Card1.png',
+        //     '/assets/Blank Id Card1.png'
+        // ];
+         const possiblePaths = [
+            'assets/IdCard2.png',
+            './assets/IdCard2.png',
+            '/assets/IdCard2.png'
         ];
 
         tryLoadBackground(possiblePaths.slice(), function(bgImg) {
@@ -327,3 +332,4 @@ document.addEventListener('DOMContentLoaded', function() {
 
 </body>
 </html>
+
