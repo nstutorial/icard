@@ -113,7 +113,7 @@
 <div class="container">
     <!-- Form to collect data -->
     <div class="form-container">
-        <form id="idCardForm">
+        <form id="idCardForm" onsubmit="return false;">
             <label>Name:</label>
             <input type="text" id="name" placeholder="Enter Name" required>
             
@@ -144,7 +144,7 @@
             <label>Password:</label>
             <input type="password" id="password" placeholder="Enter Password" required>
             
-            <button type="button" onclick="generateIDCard()">Generate ID Card</button>
+            <button type="button" id="generateBtn">Generate ID Card</button>
         </form>
     </div>
 
@@ -156,65 +156,34 @@
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', function() {
     const canvas = document.getElementById('idCardCanvas');
     const ctx = canvas.getContext('2d');
+    const generateBtn = document.getElementById('generateBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const photoInput = document.getElementById('photoInput');
 
-    function generateIDCard() {
-        const password = document.getElementById('password').value;
-        
-        if (password !== "svps") {
-            alert("Incorrect password! Please try again.");
+    // Try a few likely paths for the background image, then fallback if none load
+    function tryLoadBackground(paths, onResult) {
+        if (!paths || paths.length === 0) {
+            onResult(null);
             return;
         }
-
-        // Load background template
         const img = new Image();
-        img.src = '/assets/Blank Id Card1.png';  // Path to the uploaded ID card template
+        let attempted = false;
         img.onload = function() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-            // Get form values
-            const name = document.getElementById('name').value;
-            const className = document.getElementById('class').value;
-            const section = document.getElementById('section').value;
-            const admnNo = document.getElementById('admnNo').value;
-            const guardian = document.getElementById('guardian').value;
-            const dob = document.getElementById('dob').value;
-            const phone = document.getElementById('phone').value;
-            const address = document.getElementById('address').value;
-
-             // Add text data to canvas
-            ctx.font = "bold 30px Arial";
-            ctx.fillStyle = "#1600fd";
-            ctx.fillText(name, 70, 680);  // Name
-            ctx.fillText(className, 200, 735);  // Class
-            ctx.fillText(section, 630, 735);  // Section
-            ctx.fillText(admnNo, 320, 790);  // Admission No
-            ctx.fillText(guardian, 320, 830);  // Guardian's Name
-            ctx.fillText(dob, 320, 875);  // Date of Birth
-            ctx.fillText(phone, 320, 922);  // Phone No
-            
-            // Call the text wrapping function for address
-            wrapText(ctx, address, 320, 970, 400, 30);  // Address with wrapping
-
-            // Add uploaded photo
-            const photoInput = document.getElementById('photoInput');
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const imgPhoto = new Image();
-                imgPhoto.src = event.target.result;
-                imgPhoto.onload = function() {
-                    ctx.drawImage(imgPhoto, 462, 300, 250, 305);  // Coordinates for photo
-                };
-            };
-            if (photoInput.files[0]) {
-                reader.readAsDataURL(photoInput.files[0]);
-            }
-
-            // Show download button
-            document.getElementById("downloadBtn").style.display = "block";
+            onResult(img);
         };
+        img.onerror = function() {
+            // try next path
+            attempted = true;
+            paths.shift();
+            tryLoadBackground(paths, onResult);
+        };
+        // set crossOrigin if you host the image elsewhere and need toDataURL - commented out for local files
+        // img.crossOrigin = 'anonymous';
+        img.src = paths[0];
+        // Safety: if the browser blocks the load synchronously, ensure onerror gets handled by above
     }
 
     function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
@@ -229,7 +198,7 @@
 
             if (testWidth > maxWidth && i > 0) {
                 // Draw the current line of text
-                ctx.fillText(line, x, lineY);
+                ctx.fillText(line.trim(), x, lineY);
                 // Move to the next line
                 line = words[i] + ' ';
                 lineY += lineHeight;
@@ -238,18 +207,122 @@
             }
         }
         // Draw the remaining text
-        ctx.fillText(line, x, lineY);
+        ctx.fillText(line.trim(), x, lineY);
     }
 
-    function downloadCard() {
-        const name = document.getElementById('name').value.trim(); // Get the name from the form
-        const formattedName = name.replace(/\s+/g, '_'); // Replace spaces with underscores for the filename
-        
-        const link = document.createElement('a');
-        link.download = `${formattedName}_ID_Card.png`; // Use the name as part of the filename
-        link.href = canvas.toDataURL();
-        link.click();
+    function renderCard(bgImage) {
+        // Clear first
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (bgImage) {
+            ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+        } else {
+            // Fallback: draw a simple background so user sees something
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#e9e9e9';
+            ctx.fillRect(20, 20, canvas.width - 40, canvas.height - 40);
+            ctx.fillStyle = '#000';
+            ctx.font = "bold 20px Arial";
+            ctx.fillText("Template not found - using fallback background", 30, 60);
+        }
+
+        // Get form values
+        const name = document.getElementById('name').value || '';
+        const className = document.getElementById('class').value || '';
+        const section = document.getElementById('section').value || '';
+        const admnNo = document.getElementById('admnNo').value || '';
+        const guardian = document.getElementById('guardian').value || '';
+        const dob = document.getElementById('dob').value || '';
+        const phone = document.getElementById('phone').value || '';
+        const address = document.getElementById('address').value || '';
+
+        // Add text data to canvas
+        ctx.font = "bold 30px Arial";
+        ctx.fillStyle = "#1600fd";
+        ctx.fillText(name, 70, 680);  // Name
+        ctx.fillText(className, 200, 735);  // Class
+        ctx.fillText(section, 630, 735);  // Section
+        ctx.fillText(admnNo, 320, 790);  // Admission No
+        ctx.fillText(guardian, 320, 830);  // Guardian's Name
+        ctx.fillText(dob, 320, 875);  // Date of Birth
+        ctx.fillText(phone, 320, 922);  // Phone No
+
+        // Call the text wrapping function for address
+        wrapText(ctx, address, 320, 970, 400, 30);  // Address with wrapping
+
+        // Add uploaded photo (async)
+        if (photoInput.files && photoInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const imgPhoto = new Image();
+                imgPhoto.onload = function() {
+                    // Draw photo on top of template/text where intended
+                    ctx.drawImage(imgPhoto, 462, 300, 250, 305);  // Coordinates for photo
+                    // show download after photo is drawn
+                    downloadBtn.style.display = 'inline-block';
+                };
+                imgPhoto.onerror = function() {
+                    console.error('Failed to load the uploaded photo. It may be corrupted or of an unsupported format.');
+                    // still show download
+                    downloadBtn.style.display = 'inline-block';
+                };
+                imgPhoto.src = event.target.result;
+            };
+            reader.onerror = function() {
+                console.error('Failed to read the uploaded photo file.');
+                downloadBtn.style.display = 'inline-block';
+            };
+            reader.readAsDataURL(photoInput.files[0]);
+        } else {
+            // No photo selected but still allow download of what we have
+            downloadBtn.style.display = 'inline-block';
+        }
     }
+
+    function generateIDCard() {
+        const password = document.getElementById('password').value;
+        if (password !== "svps") {
+            alert("Incorrect password! Please try again.");
+            return;
+        }
+
+        // Paths to try for template (try relative first)
+        const possiblePaths = [
+            'assets/Blank Id Card1.png',
+            './assets/Blank Id Card1.png',
+            '/assets/Blank Id Card1.png'
+        ];
+
+        tryLoadBackground(possiblePaths.slice(), function(bgImg) {
+            if (bgImg) {
+                console.log('Background template loaded successfully.');
+            } else {
+                console.warn('Background template could not be loaded; using fallback background.');
+            }
+            renderCard(bgImg);
+        });
+    }
+
+    // Wire up button
+    generateBtn.addEventListener('click', generateIDCard);
+
+    // Provide download function in global scope for the button's onclick (keeps your original button handler)
+    window.downloadCard = function() {
+        const nameVal = document.getElementById('name').value.trim() || 'ID_Card';
+        const formattedName = nameVal.replace(/\s+/g, '_');
+        const link = document.createElement('a');
+        link.download = `${formattedName}_ID_Card.png`;
+        // Use toDataURL - if cross-origin images were used and not allowed, this may throw a security error
+        try {
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } catch (err) {
+            console.error('Failed to export canvas. Cross-origin image may be tainting the canvas.', err);
+            alert('Unable to download the image due to browser security restrictions (cross-origin image). See console for details.');
+        }
+    };
+});
 </script>
 
 </body>
