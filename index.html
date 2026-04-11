@@ -112,6 +112,14 @@
 
 <div class="container">
     <div class="form-container">
+        <h3>Download Template</h3>
+        <button onclick="downloadTemplate()" style="background-color: #FF9800; margin-bottom: 10px;">Download ZIP Template</button>
+        <p style="font-size: 12px; color: #666; margin-bottom: 15px;">Get the complete template with Excel format and instructions</p>
+        
+        <button onclick="downloadUserTemplate()" style="background-color: #4CAF50; margin-bottom: 20px;">Download Your Template File</button>
+        <p style="font-size: 12px; color: #666; margin-bottom: 20px;">Download: bulk_id_card_template (1).zip</p>
+        
+        <h3>Generate Bulk ID Cards</h3>
         <input type="file" id="zipInput" accept=".zip" required>
         <button onclick="processZip()">Generate Bulk ID Cards</button>
 
@@ -208,8 +216,14 @@ async function processZip() {
         const zip = new JSZip();
         const contents = await zip.loadAsync(input.files[0]);
 
+        // Debug: Show all files in ZIP
+        console.log("Files found in ZIP:", Object.keys(contents.files));
+        
         const excelFile = Object.keys(contents.files).find(name => name.endsWith('.xlsx'));
-        if (!excelFile) return alert("No Excel file found in ZIP!");
+        if (!excelFile) {
+            console.error("Available files:", Object.keys(contents.files));
+            return alert("No Excel file found in ZIP! Found files: " + Object.keys(contents.files).join(", "));
+        }
 
         const data = await contents.files[excelFile].async("arraybuffer");
         const workbook = XLSX.read(data, { type: "array" });
@@ -225,10 +239,11 @@ async function processZip() {
 
         for (let student of students) {
             const photoName = student["Photo Filename"];
-            const photoFile = contents.file(photoName);
+            const photoPath = `photos/${photoName}`;
+            const photoFile = contents.file(photoPath);
 
             if (!photoFile) {
-                console.warn(`❌ Photo missing for: ${student["Name"]}`);
+                console.warn(`❌ Photo missing for: ${student["Name"]} (looking for: ${photoPath})`);
                 failureCount++;
                 failedStudents.push(student["Name"]);
                 continue;
@@ -258,6 +273,20 @@ async function processZip() {
             console.log("❌ Failure List:", failedStudents);
         }
 
+        // Show summary to user
+        let message = `Bulk ID Card Generation Complete!\n\n`;
+        message += `✅ Successfully generated: ${successCount} ID cards\n`;
+        message += `❌ Failed: ${failureCount} ID cards\n\n`;
+        
+        if (failedStudents.length > 0) {
+            message += `Failed students:\n${failedStudents.join("\n")}\n\n`;
+            message += `Check browser console (F12) for detailed error messages.`;
+        } else {
+            message += `All ID cards generated successfully!`;
+        }
+        
+        alert(message);
+
     } catch (error) {
         console.error("🚨 Error processing ZIP file:", error);
     }
@@ -272,7 +301,7 @@ async function processZip() {
         const ctx = canvas.getContext("2d");
 
         const bg = new Image();
-        bg.src = "/assets/Blank Id Card1.png"; // or a relative path
+        bg.src = "/assets/IdCard2.png"; // or a relative path
         await new Promise((resolve, reject) => {
             bg.onload = resolve;
             bg.onerror = reject; // Handle loading errors
@@ -326,6 +355,226 @@ async function processZip() {
             }
         }
         ctx.fillText(line, x, lineY);
+    }
+
+    async function downloadTemplate() {
+        try {
+            const zip = new JSZip();
+            
+            // Create proper Excel file using XLSX library
+            const excelData = [
+                ["Name", "Class", "Section", "AdmissionNo", "GuardianName", "DOB", "Phone", "Address", "Photo Filename"],
+                ["Alice Johnson", "10", "A", "2024001", "Mr. Robert Johnson", "15-Jan-2010", "9876543210", "123 Park Avenue, New City", "alice.jpg"],
+                ["Bob Smith", "10", "B", "2024002", "Mrs. Mary Smith", "22-Feb-2010", "9876543211", "456 Oak Street, New City", "bob.jpg"],
+                ["Carol Williams", "11", "A", "2024003", "Mr. David Williams", "10-Mar-2009", "9876543212", "789 Pine Road, New City", "carol.jpg"],
+                ["David Brown", "9", "C", "2024004", "Mr. James Brown", "05-Apr-2011", "9876543213", "321 Elm Drive, New City", "david.jpg"],
+                ["Emma Davis", "12", "A", "2024005", "Mrs. Sarah Davis", "18-May-2008", "9876543214", "654 Maple Lane, New City", "emma.jpg"]
+            ];
+
+            // Create worksheet
+            const ws = XLSX.utils.aoa_to_sheet(excelData);
+            
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Students");
+            
+            // Generate Excel file
+            const excelFile = XLSX.write(wb, {bookType: 'xlsx', type: 'array'});
+            
+            // Add Excel file to ZIP
+            zip.file("students.xlsx", excelFile);
+            
+            // Create README content
+            const readmeContent = `# Bulk ID Card Generator - ZIP Template Structure
+
+## Overview
+This template helps you prepare bulk ID card generation by organizing student data and photos in a structured ZIP file.
+
+## Required ZIP Structure
+\`\`\`
+your_bulk_id_cards.zip
+|
++-- students.xlsx (Excel file with student data)
++-- students.csv (CSV backup file - opens in any spreadsheet program)
+|
++-- photos/
+    |
+    +-- photo1.jpg
+    +-- photo2.jpg
+    +-- photo3.jpg
+    +-- ... (all student photos)
+\`\`\`
+
+## Data File Format (students.xlsx & students.csv)
+Both files contain the same data in different formats. Use either one:
+- **students.xlsx**: For Microsoft Excel users
+- **students.csv**: Opens in any spreadsheet program (Excel, Google Sheets, LibreOffice)
+
+The files must contain the following columns in this exact order:
+
+| Column Header | Description | Example |
+|---------------|-------------|---------|
+| Name | Student's full name | "John Doe" |
+| Class | Student's class/grade | "10" |
+| Section | Class section | "A" |
+| AdmissionNo | Admission number | "2024001" |
+| GuardianName | Parent/guardian name | "Mr. Smith Doe" |
+| DOB | Date of Birth (DD-MMM-YYYY) | "15-Jan-2010" |
+| Phone | Contact number | "9876543210" |
+| Address | Full address | "123 Main St, City" |
+| Photo Filename | Photo filename with extension | "photo1.jpg" |
+
+### Important Notes:
+- Column headers must match exactly (case-sensitive)
+- Photo filenames must match the actual files in the photos folder
+- DOB format should be DD-MMM-YYYY (e.g., 15-Jan-2010)
+- All fields are required for each student
+
+## Photo Requirements
+- Format: JPG, JPEG, or PNG
+- Recommended size: 250x305 pixels or higher
+- File names should match the "Photo Filename" column in Excel
+- Place all photos directly in the photos folder (no subfolders)
+
+## Sample Excel Data
+
+| Name | Class | Section | AdmissionNo | GuardianName | DOB | Phone | Address | Photo Filename |
+|------|-------|---------|-------------|--------------|-----|-------|---------|----------------|
+| Alice Johnson | 10 | A | 2024001 | Mr. Robert Johnson | 15-Jan-2010 | 9876543210 | 123 Park Avenue, City | alice.jpg |
+| Bob Smith | 10 | B | 2024002 | Mrs. Mary Smith | 22-Feb-2010 | 9876543211 | 456 Oak Street, City | bob.jpg |
+| Carol Williams | 11 | A | 2024003 | Mr. David Williams | 10-Mar-2009 | 9876543212 | 789 Pine Road, City | carol.jpg |
+
+## How to Use
+1. Fill the Excel file with all student data
+2. Place all student photos in the photos folder
+3. Ensure photo filenames match the Excel column
+4. Create a ZIP file containing both the Excel file and photos folder
+5. Upload the ZIP file using the bulk ID card generator
+6. Click "Generate Bulk ID Cards"
+
+## Password
+The system requires password: **svps**
+
+## Output
+- Each ID card will be automatically downloaded as PNG files
+- Filename format: StudentName_ID_Card.png
+- Cards are generated using the template design
+
+## Troubleshooting
+- **"No Excel file found"**: Ensure your ZIP contains an .xlsx file
+- **"Photo not found"**: Check that photo filenames match exactly
+- **"Incorrect password"**: Use password "svps"
+- **Generation fails**: Check all required fields are filled in Excel
+
+## Tips
+- Use consistent photo naming conventions
+- Keep photo file sizes reasonable (under 1MB each)
+- Test with a small batch (2-3 students) first
+- Backup your original data before processing`;
+
+            // Add README file
+            zip.file("README.md", readmeContent);
+            
+            // Create photos folder with instructions
+            const photoReadme = `This folder should contain all student photos.
+
+Photo Requirements:
+- Format: JPG, JPEG, or PNG
+- Recommended size: 250x305 pixels or higher
+- File names must match the "Photo Filename" column in students.xlsx
+
+Example photo files for the template:
+- alice.jpg
+- bob.jpg
+- carol.jpg
+- david.jpg
+- emma.jpg
+
+Place your actual student photos here with matching filenames.`;
+
+            zip.file("photos/README.txt", photoReadme);
+            
+            // Create instructions file
+            const instructionsContent = `# Quick Setup Instructions
+
+## Step 1: Prepare Your Data
+1. Open students.xlsx 
+2. Replace sample data with your actual student information
+3. Ensure all columns are filled correctly
+4. Save the file as students.xlsx
+
+## Step 2: Prepare Photos
+1. Place all student photos in the photos folder
+2. Rename photos to match the "Photo Filename" column in Excel
+3. Use JPG, JPEG, or PNG format
+4. Recommended size: 250x305 pixels or higher
+
+## Step 3: Create ZIP File
+1. Select both students.xlsx and the photos folder
+2. Right-click and select "Send to > Compressed (zipped) folder"
+3. Name the file as desired
+
+## Step 4: Generate ID Cards
+1. Open the ID Card Generator
+2. Upload your ZIP file
+3. Click "Generate Bulk ID Cards"
+4. Enter password: svps
+5. ID cards will download automatically
+
+## File Structure After Setup
+\`\`\`
+your_zip_file.zip
+|
++-- students.xlsx
+|
++-- photos/
+    |
+    +-- student1_photo.jpg
+    +-- student2_photo.jpg
+    +-- student3_photo.jpg
+    +-- ...
+\`\`\`
+
+## Important Notes
+- Password is case-sensitive: svps
+- Photo filenames must match exactly (including extension)
+- All Excel fields are required
+- Test with 2-3 students first before processing large batches`;
+
+            zip.file("instructions.md", instructionsContent);
+            
+            // Also add a CSV version as backup
+            const csvContent = excelData.map(row => row.join(",")).join("\n");
+            zip.file("students.csv", csvContent);
+            
+            // Generate the ZIP file
+            const content = await zip.generateAsync({type: "blob"});
+            
+            // Download the ZIP file
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(content);
+            link.download = "bulk_id_card_template.zip";
+            link.click();
+            
+            // Clean up
+            URL.revokeObjectURL(link.href);
+            
+            alert("Template downloaded successfully! Please check your downloads folder.\n\nThe ZIP contains both .xlsx and .csv versions of the data file for maximum compatibility.");
+            
+        } catch (error) {
+            console.error("Error generating template:", error);
+            alert("Error generating template. Please try again.");
+        }
+    }
+
+    function downloadUserTemplate() {
+        // Download the user's specific ZIP file
+        const link = document.createElement("a");
+        link.href = "bulk_id_card_template (1).zip";
+        link.download = "bulk_id_card_template (1).zip";
+        link.click();
+        
+        alert("Downloading your template file: bulk_id_card_template (1).zip");
     }
 </script>
 
